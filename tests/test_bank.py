@@ -22,3 +22,7 @@ class TestBank(unittest.TestCase):
         self.bank.deposit_mony('10001', 'checking', 500)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 1500.0)
 
+    def test_withdraw_success(self):
+        self.bank.withdraw_mony('10001', 'checking', 200)
+        self.assertEqual(self.bank.customers['10001']['checking'].balance, 800.0)
+

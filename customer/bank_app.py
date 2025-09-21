@@ -10,6 +10,14 @@ class Account:
             raise ValueError('Deposit amount must be positive.')
         self.balance += amount
         return self.balance
+    
+    def withdraw(self, amount):
+        if amount <= 0:
+            raise ValueError('Withdrawal amount must be positive.')
+        if self.balance < amount:
+            raise ValueError('Insufficient funds.')
+        self.balance -= amount
+        return self.balance
 
 class CheckingAccount(Account):
     
@@ -53,7 +61,6 @@ class Bank:
                         "checking": CheckingAccount(row['balance_checking'], overdraft_count, is_active),
                         "savings": SavingsAccount(row['balance_savings'])
                     }
-                    print('file are readd')
         except FileNotFoundError:
             print(f"Warning: {self.file_path} not found. Starting with an empty database.")
 
@@ -64,12 +71,45 @@ class Bank:
         
         if account_type == 'checking':
             customer['checking'].deposit(amount)
+            print('account_type are checked')
         elif account_type == 'savings':
             customer['savings'].deposit(amount)
+            print('account_type are saved')
+        else:
+            raise ValueError('Invalid account type.')
+    
+    def withdraw_mony(self, account_id, account_type, amount):
+        customer = self.customers.get(account_id)
+        if not customer:
+            raise ValueError('Customer not found.')
+        
+        if account_type == 'checking':
+            customer['checking'].withdraw(amount)
+            print('account_type are checked')
+        elif account_type == 'savings':
+            customer['savings'].withdraw(amount)
+            print('account_type are saved')
         else:
             raise ValueError('Invalid account type.')
 
 if __name__ == "__main__":
-    Bank()
+    bank = Bank()
 
+    if '10001' in bank.customers:
+        try:
+            bank.deposit_mony('10001', 'checking', 100)
+            print("Deposit successful.")
+        except ValueError as e:
+            print(f"Error: {e}")
+    else:
+        print("Customer with ID '10001' not found. Cannot deposit money.")
+
+    if '10002' in bank.customers:
+        try:
+            bank.withdraw_mony('10002', 'savings', 100)
+            print("withdraw successful.")
+        except ValueError as e:
+            print(f"Error: {e}")
+    else:
+        print("Customer with ID '10002' not found. Cannot withdraw money.")
 
