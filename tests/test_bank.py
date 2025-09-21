@@ -18,3 +18,7 @@ class TestBank(unittest.TestCase):
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 1000.0)
         self.assertEqual(self.bank.customers['10001']['savings'].balance, 10000.0)
 
+    def test_deposit(self):
+        self.bank.deposit_mony('10001', 'checking', 500)
+        self.assertEqual(self.bank.customers['10001']['checking'].balance, 1500.0)
+
