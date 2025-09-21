@@ -20,7 +20,9 @@ class CheckingAccount(Account):
 
 
 class SavingsAccount(Account):
-    pass
+    
+    def __init__(self, balance = 0):
+        super().__init__("savings", balance)
 
 class Bank:
     def __init__(self, file_path = 'bank.csv'):

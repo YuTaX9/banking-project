@@ -16,5 +16,5 @@ class TestBank(unittest.TestCase):
     def test_load_customers(self):
         self.assertIn('10001', self.bank.customers)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 1000.0)
-        # self.assertEqual(self.bank.customers['10001']['savings'].balance, 10000.0)
+        self.assertEqual(self.bank.customers['10001']['savings'].balance, 10000.0)
 
