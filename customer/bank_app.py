@@ -81,6 +81,19 @@ class Bank:
                     'is_active': info['checking'].is_active
                 })
 
+    def add_new_customer(self, first_name, last_name, password, initial_checking = 0, initial_savings = 0):
+        new_account_id = str(len(self.customers) + 10001)
+        self.customers[new_account_id] = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "password": password,
+            "checking": CheckingAccount(initial_checking),
+            "savings": SavingsAccount(initial_savings)
+        }
+        self.save_customer()
+        print('customer are saved')
+        return new_account_id
+
 
     def deposit_mony(self, account_id, account_type, amount):
         customer = self.customers.get(account_id)
@@ -89,10 +102,8 @@ class Bank:
         
         if account_type == 'checking':
             customer['checking'].deposit(amount)
-            print('account_type are checked')
         elif account_type == 'savings':
             customer['savings'].deposit(amount)
-            print('account_type are saved')
         else:
             raise ValueError('Invalid account type.')
     
@@ -103,10 +114,8 @@ class Bank:
         
         if account_type == 'checking':
             customer['checking'].withdraw(amount)
-            print('account_type are checked')
         elif account_type == 'savings':
             customer['savings'].withdraw(amount)
-            print('account_type are saved')
         else:
             raise ValueError('Invalid account type.')
 
@@ -130,5 +139,14 @@ if __name__ == "__main__":
             print(f"Error: {e}")
     else:
         print("Customer with ID '10002' not found. Cannot withdraw money.")
+
+    try:
+        print("Attempting to add a new customer...")
+        new_account_id = bank.add_new_customer("Bassam", "Alghamdi", "aabbpass123", 500, 1000)
+        print(f"New customer added with ID: {new_account_id}")
+        print('-----------------------------------------')
+    except Exception as e:
+        print(f"Failed to add a new customer. Error: {e}")
+
 
 

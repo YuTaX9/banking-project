@@ -1,3 +1,4 @@
 account_id,first_name,last_name,password,balance_checking,balance_savings,overdraft_count,is_active
-10001,suresh,sigera,pass1,1000,10000,0,True
-10002,test,user,pass2,50,500,0,True
+10001,Bassam,Alghamdi,aabbpass123,700.0,1000.0,0,True
+10002,Bassam,Alghamdi,aabbpass123,500.0,900.0,0,True
+10003,Bassam,Alghamdi,aabbpass123,500.0,1000.0,0,True
