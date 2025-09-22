@@ -93,6 +93,13 @@ class Bank:
         self.save_customer()
         print('customer are saved')
         return new_account_id
+    
+    def log_in(self, account_id, password):
+        customer = self.customers.get(account_id)
+        if customer and customer['password'] == password:
+            return customer
+        return None
+
 
 
     def deposit_mony(self, account_id, account_type, amount):
@@ -122,6 +129,30 @@ class Bank:
 if __name__ == "__main__":
     bank = Bank()
 
+    try:
+        print("Attempting to add a new customer...")
+        new_account_id = bank.add_new_customer("Bassam", "Alghamdi", "aabbpass123", 500, 1000)
+        print(f"New customer added with ID: {new_account_id}")
+        print('-----------------------------------------')
+    except Exception as e:
+        print(f"Failed to add a new customer. Error: {e}")
+
+    print('-----------------------------------------')
+    print("Attempting to log in...")
+    logged_in_customer = bank.log_in('10001', 'aabbpass123')
+    if logged_in_customer:
+        print(f"Login successful for {logged_in_customer['first_name']} {logged_in_customer['last_name']}!")
+    else:
+        print("Login failed. Invalid account ID or password.")
+
+    print('-----------------------------------------')
+    print("Attempting to log in with invalid password...")
+    failed_login_customer = bank.log_in('10001', 'wrong_pass')
+    if failed_login_customer:
+        print(f"Login successful for {failed_login_customer['first_name']} {failed_login_customer['last_name']}!")
+    else:
+        print("Login failed. Invalid account ID or password.")
+
     if '10001' in bank.customers:
         try:
             bank.deposit_mony('10001', 'checking', 100)
@@ -139,14 +170,6 @@ if __name__ == "__main__":
             print(f"Error: {e}")
     else:
         print("Customer with ID '10002' not found. Cannot withdraw money.")
-
-    try:
-        print("Attempting to add a new customer...")
-        new_account_id = bank.add_new_customer("Bassam", "Alghamdi", "aabbpass123", 500, 1000)
-        print(f"New customer added with ID: {new_account_id}")
-        print('-----------------------------------------')
-    except Exception as e:
-        print(f"Failed to add a new customer. Error: {e}")
 
 
 

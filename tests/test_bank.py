@@ -1,5 +1,6 @@
 import unittest
 import csv
+import os
 from customer.bank_app import Bank, CheckingAccount, SavingsAccount
 
 class TestBank(unittest.TestCase):
@@ -30,5 +31,9 @@ class TestBank(unittest.TestCase):
     def test_withdraw_success(self):
         self.bank.withdraw_mony('10001', 'checking', 200)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 800.0)
+
+    # def tearDown(self):
+    #     if os.path.exists(self.test_file):
+    #         os.remove(self.test_file)
 
 
