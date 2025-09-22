@@ -64,6 +64,24 @@ class Bank:
         except FileNotFoundError:
             print(f"Warning: {self.file_path} not found. Starting with an empty database.")
 
+    def save_customer(self):
+        fieldnames = ['account_id', 'first_name', 'last_name', 'password', 'balance_checking', 'balance_savings', 'overdraft_count', 'is_active']
+        with open(self.file_path, mode='w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames = fieldnames)
+            writer.writeheader()
+            for account_id, info in self.customers.items():
+                writer.writerow({
+                    'account_id': account_id,
+                    'first_name': info['first_name'],
+                    'last_name': info['last_name'],
+                    'password': info['password'],
+                    'balance_checking': info['checking'].balance,
+                    'balance_savings': info['savings'].balance,
+                    'overdraft_count': info['checking'].overdraft_count,
+                    'is_active': info['checking'].is_active
+                })
+
+
     def deposit_mony(self, account_id, account_type, amount):
         customer = self.customers.get(account_id)
         if not customer:
@@ -112,5 +130,5 @@ if __name__ == "__main__":
             print(f"Error: {e}")
     else:
         print("Customer with ID '10002' not found. Cannot withdraw money.")
-        
+
 
