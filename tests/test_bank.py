@@ -18,6 +18,11 @@ class TestBank(unittest.TestCase):
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 1000.0)
         self.assertEqual(self.bank.customers['10001']['savings'].balance, 10000.0)
 
+    def test_add_new_customer(self):
+        new_id = self.bank.add_new_customer("Bassam", "Alghamdi", "password")
+        self.assertIn(new_id, self.bank.customers)
+        self.assertEqual(self.bank.customers[new_id]['first_name'], "Bassam")
+
     def test_deposit(self):
         self.bank.deposit_mony('10001', 'checking', 500)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 1500.0)
@@ -25,5 +30,5 @@ class TestBank(unittest.TestCase):
     def test_withdraw_success(self):
         self.bank.withdraw_mony('10001', 'checking', 200)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 800.0)
-        
+
 
