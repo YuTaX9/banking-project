@@ -44,7 +44,8 @@ class CheckingAccount(Account):
             self.balance -= amount
             self.balance -= self.OVERDRAFT_FEE
             self.overdraft_count += 1
-            #deactivate???
+            if self.overdraft_count >= 2:
+                self.is_active = False
             return self.balance, self.OVERDRAFT_FEE
         else:
             self.balance -= amount
