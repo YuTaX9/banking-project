@@ -21,6 +21,9 @@ class Account:
 
 class CheckingAccount(Account):
     
+    OVERDRAFT_FEE = 35
+    OVERDRAFT_LIMIT = -100
+
     def __init__(self, balance = 0, overdraft_count = 0, is_active = True):
         super().__init__('checking', balance)
         self.overdraft_count = int(overdraft_count)
@@ -30,7 +33,22 @@ class CheckingAccount(Account):
         else:
             (is_active.lower() == 'true')
 
-    
+    def withdraw(self, amount):
+        if not self.is_active:
+            raise ValueError('Account is deactivated due to multiple overdrafts.')
+        
+        if self.balance - amount < self.OVERDRAFT_LIMIT:
+            raise ValueError('Withdrawal would exceed overdraft limit.')
+        
+        if self.balance < amount:
+            self.balance -= amount
+            self.balance -= self.OVERDRAFT_FEE
+            self.overdraft_count += 1
+            #deactivate???
+            return self.balance, self.OVERDRAFT_FEE
+        else:
+            self.balance -= amount
+            return self.balance, 0
 
 
 
