@@ -36,6 +36,13 @@ class TestBank(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.bank.withdraw_mony('10001', 'checking', 1500)
 
+    def test_overdraft_first_time(self):
+        self.bank.withdraw_mony('10002', 'checking', 100)
+        customer_account = self.bank.customers['10002']['checking']
+        self.assertEqual(customer_account.balance, 50 - 100 - CheckingAccount.OVERDRAFT_FEE)
+        self.assertEqual(customer_account.overdraft_count, 1)
+        self.assertTrue(customer_account.is_active)
+
     def test_transfer_money(self):
         self.bank.transfer_money('10001', 'checking', '10002', 'checking', 100)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 900.0)
