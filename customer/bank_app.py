@@ -64,7 +64,7 @@ class Bank:
         except FileNotFoundError:
             print(f"Warning: {self.file_path} not found. Starting with an empty database.")
 
-    def save_customer(self):
+    def save_customers(self):
         fieldnames = ['account_id', 'first_name', 'last_name', 'password', 'balance_checking', 'balance_savings', 'overdraft_count', 'is_active']
         with open(self.file_path, mode='w', newline='') as file:
             writer = csv.DictWriter(file, fieldnames = fieldnames)
@@ -90,7 +90,7 @@ class Bank:
             "checking": CheckingAccount(initial_checking),
             "savings": SavingsAccount(initial_savings)
         }
-        self.save_customer()
+        self.save_customers()
         print('customer are saved')
         return new_account_id
     
@@ -125,6 +125,31 @@ class Bank:
             customer['savings'].withdraw(amount)
         else:
             raise ValueError('Invalid account type.')
+        
+    def transfer_money(self, from_id, from_type, to_id, to_type, amount):
+        form_customer = self.customers.get(from_id)
+        to_customer = self.customers.get(to_id)
+
+        if not form_customer or not to_customer:
+            raise ValueError('One or both customers not found.')
+        
+        if from_type == 'checking':
+            from_account = form_customer['checking']
+        elif from_type == 'savings':
+            from_account = form_customer['savings']
+        else:
+            raise ValueError('Invalid source account type.')
+        
+        if to_type == 'checking':
+            to_account = to_customer['checking']
+        elif to_type == 'savings':
+            to_account = to_customer['savings']
+        else:
+            raise ValueError("Invalid destination account type.")
+        
+        from_account.withdraw(amount)
+        to_account.deposit(amount)
+        self.save_customers()
 
 if __name__ == "__main__":
     bank = Bank()
