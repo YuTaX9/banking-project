@@ -50,6 +50,10 @@ class CheckingAccount(Account):
         else:
             self.balance -= amount
             return self.balance, 0
+        
+    def reactivate(self):
+        self.is_active = True
+        self.overdraft_count = 0
 
 
 
