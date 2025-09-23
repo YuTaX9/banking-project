@@ -32,6 +32,11 @@ class TestBank(unittest.TestCase):
         self.bank.withdraw_mony('10001', 'checking', 200)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 800.0)
 
+    def test_transfer_mony(self):
+        self.bank.transfer_money('10001', 'checking', '10002', 'checking', 100)
+        self.assertEqual(self.bank.customers['10001']['checking'].balance, 900.0)
+        self.assertEqual(self.bank.customers['10002']['checking'].balance, 150.0)
+
     # def tearDown(self):
     #     if os.path.exists(self.test_file):
     #         os.remove(self.test_file)
