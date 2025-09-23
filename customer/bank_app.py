@@ -55,8 +55,6 @@ class CheckingAccount(Account):
         self.is_active = True
         self.overdraft_count = 0
 
-
-
 class SavingsAccount(Account):
     
     def __init__(self, balance = 0):
@@ -119,12 +117,12 @@ class Bank:
         return new_account_id
     
     def log_in(self, account_id, password):
-        customer = self.customers.get(account_id)
-        if customer and customer['password'] == password:
-            return customer
-        return None
+        if account_id in self.customers and self.customers[account_id]['password'] == password:
+            return True
+        return False
 
-
+    def get_account_by_id(self, account_id):
+        return self.customers.get(account_id)
 
     def deposit_mony(self, account_id, account_type, amount):
         customer = self.customers.get(account_id)

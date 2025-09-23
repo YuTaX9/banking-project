@@ -12,7 +12,16 @@ class TestBank(unittest.TestCase):
             writer.writerow(['account_id', 'first_name', 'last_name', 'password', 'balance_checking', 'balance_savings', 'overdraft_count', 'is_active'])
             writer.writerow(['10001', 'suresh', 'sigera', 'pass1', '1000', '10000', '0', 'True'])
             writer.writerow(['10002', 'test', 'user', 'pass2', '50', '500', '0', 'True'])
+        if os.path.exists('transactions.csv'):
+            os.rename('transactions.csv')
         self.bank = Bank(self.test_file)
+    
+    # def tearDown(self):
+    #     if os.path.exists(self.test_file):
+    #         os.remove(self.test_file)
+    #     if os.path.exists('transactions.csv'):
+    #         os.remove('transactions.csv')
+
 
     def test_load_customers(self):
         self.assertIn('10001', self.bank.customers)
@@ -50,13 +59,15 @@ class TestBank(unittest.TestCase):
         self.assertEqual(customer_account.overdraft_count, 2)
         self.assertFalse(customer_account.is_active)
 
-    def test_reactivate_account(self):
+    def test_reactivate_account_with_payment(self):
+        self.bank.withdraw_mony('10002', 'checking', 60)
+        self.bank.withdraw_mony('10002', 'checking', 10)
         customer_account = self.bank.customers['10002']['checking']
-        customer_account.overdraft_count = 2
-        customer_account.is_active = False
-        self.bank.save_customers()
+        self.assertFalse(customer_account.is_active)
 
-        customer_account.reactivate()
+        payment_needed = -customer_account.balance
+        reactivated = self.bank.reactivate_account('10002', payment_needed)
+        self.assertTrue(reactivated)
         self.assertTrue(customer_account.is_active)
         self.assertEqual(customer_account.overdraft_count, 0)
 
@@ -65,8 +76,5 @@ class TestBank(unittest.TestCase):
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 900.0)
         self.assertEqual(self.bank.customers['10002']['checking'].balance, 150.0)
 
-    # def tearDown(self):
-    #     if os.path.exists(self.test_file):
-    #         os.remove(self.test_file)
-
-
+if __name__ == '__main':
+    unittest.main()
