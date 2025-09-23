@@ -29,7 +29,8 @@ class CheckingAccount(Account):
             self.is_active = is_active
         else:
             (is_active.lower() == 'true')
-        
+
+    
 
 
 

@@ -32,6 +32,10 @@ class TestBank(unittest.TestCase):
         self.bank.withdraw_mony('10001', 'checking', 200)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 800.0)
 
+    def test_withdraw_insufficient_funds(self):
+        with self.assertRaises(ValueError):
+            self.bank.withdraw_mony('10001', 'checking', 1500)
+
     def test_transfer_money(self):
         self.bank.transfer_money('10001', 'checking', '10002', 'checking', 100)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 900.0)
