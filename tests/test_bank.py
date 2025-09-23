@@ -50,6 +50,16 @@ class TestBank(unittest.TestCase):
         self.assertEqual(customer_account.overdraft_count, 2)
         self.assertFalse(customer_account.is_active)
 
+    def test_reactivate_account(self):
+        customer_account = self.bank.customers['10002']['checking']
+        customer_account.overdraft_count = 2
+        customer_account.is_active = False
+        self.bank.save_customers()
+
+        customer_account.reactivate()
+        self.assertTrue(customer_account.is_active)
+        self.assertEqual(customer_account.overdraft_count, 0)
+
     def test_transfer_money(self):
         self.bank.transfer_money('10001', 'checking', '10002', 'checking', 100)
         self.assertEqual(self.bank.customers['10001']['checking'].balance, 900.0)
