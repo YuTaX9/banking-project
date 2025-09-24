@@ -31,7 +31,8 @@ class CheckingAccount(Account):
         if isinstance(is_active, bool):
             self.is_active = is_active
         else:
-            (is_active.lower() == 'true')
+            self.is_active = str(is_active).lower() == 'true'
+
 
     def withdraw(self, amount):
         if not self.is_active:
@@ -40,17 +41,25 @@ class CheckingAccount(Account):
         if self.balance - amount < self.OVERDRAFT_LIMIT:
             raise ValueError('Withdrawal would exceed overdraft limit.')
         
-        if self.balance < amount:
-            self.balance -= amount
-            self.balance -= self.OVERDRAFT_FEE
-            self.overdraft_count += 1
-            if self.overdraft_count >= 2:
-                self.is_active = False
-            return self.balance, self.OVERDRAFT_FEE
-        else:
+        if self.balance >= amount:
             self.balance -= amount
             return self.balance, 0
+        if self.balance < 0 and amount > 100:
+            raise ValueError('Cannot withdraw more than $100 while account is negative.')
         
+        projected_after_withdraw = self.balance - amount
+        projected_after_fee = projected_after_withdraw - self.OVERDRAFT_FEE
+
+        if projected_after_fee < self.OVERDRAFT_LIMIT:
+            raise ValueError('Withdrawal would exceed overdraft limit.')
+        
+        self.balance = projected_after_fee
+        self.overdraft_count += 1
+        if self.overdraft_count >= 2:
+            self.is_active = False
+
+        return self.balance, self.OVERDRAFT_FEE
+
     def reactivate(self):
         self.is_active = True
         self.overdraft_count = 0
@@ -172,6 +181,16 @@ class Bank:
         from_account.withdraw(amount)
         to_account.deposit(amount)
         self.save_customers()
+
+    def reactivate_account(self, account_id, payment_amount):
+        customer = self.customers.get(account_id)
+        if not customer:
+            raise ValueError('Customer not found.')
+        checking = customer['checking']
+        if not isinstance(checking, CheckingAccount):
+            raise ValueError('No checking account to reactivate.')
+        if payment_amount <= 0:
+            raise ValueError('Payment amount must be positive.')
 
 if __name__ == "__main__":
     bank = Bank()
