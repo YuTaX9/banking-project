@@ -210,14 +210,18 @@ class Bank:
             return False
         return True
 
-    def add_new_customer(self, first_name, last_name, password, initial_checking=0, initial_savings=0):
+    def add_new_customer(self, first_name, last_name, password, initial_checking=0, initial_savings=0, overdraft_limit=-100):
+        if not self.is_strong_password(password):
+            print("Warning: Weak password!")
+
         if self.customers:
             max_id = max(int(k) for k in self.customers.keys())
             new_account_id = str(max_id + 1)
         else:
             new_account_id = "10001"
 
-        cust = Customer(new_account_id, first_name, last_name, password, initial_checking, initial_savings)
+        cust = Customer(new_account_id, first_name, last_name, password,
+                        initial_checking, initial_savings, overdraft_limit=overdraft_limit)
         self.customers[new_account_id] = cust
         self.save_customers()
         return new_account_id
@@ -304,3 +308,18 @@ class Bank:
 
         self.save_customers()
         return reactivated
+
+    def generate_statement(self, account_id):
+        customer = self.customers.get(account_id)
+        if not customer:
+            raise ValueError("Customer not found.")
+
+        tx_list = self.tx_logger.get_transactions_for_customer(account_id)
+        with open(f"{account_id}_statement.txt", "w") as f:
+            f.write(f"Customer: {customer.first_name} {customer.last_name}\n")
+            f.write(f"Checking Balance: {customer.checking.balance}\n")
+            f.write(f"Savings Balance: {customer.savings.balance}\n")
+            f.write(f"Overdrafts: {customer.overdraft_count}\n")
+            f.write("Transactions:\n")
+            for tx in tx_list:
+                f.write(f"{tx['timestamp']} | {tx['type']} | Amount: {tx['amount']} | Fee: {tx['fee']} | Balance: {tx['resulting_balance']}\n")
