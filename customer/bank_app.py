@@ -2,11 +2,11 @@ import csv
 import os
 from datetime import datetime
 
-# Account Classes
 class Account:
-    def __init__(self, account_type, balance=0):
+    def __init__(self, account_type, balance = 0, currency="SAR"):
         self.account_type = account_type
         self.balance = float(balance)
+        self.currency = currency
 
     def deposit(self, amount):
         if amount <= 0:
@@ -22,6 +22,10 @@ class Account:
         self.balance -= amount
         return self.balance
 
+    def convert_to(self, target_currency, rate):
+        self.balance *= rate
+        self.currency = target_currency
+
 class CheckingAccount(Account):
     OVERDRAFT_FEE = 35
     OVERDRAFT_LIMIT = -100
@@ -34,7 +38,7 @@ class CheckingAccount(Account):
     def withdraw(self, amount):
         if not self.is_active:
             raise ValueError("Account is deactivated due to multiple overdrafts.")
-    
+
         if amount <= 0:
             raise ValueError("Withdrawal must be positive.")
 
@@ -48,10 +52,10 @@ class CheckingAccount(Account):
 
             if self.balance < self.OVERDRAFT_LIMIT:
                 raise ValueError("Withdrawal would exceed overdraft limit.")
-            
+
             if self.overdraft_count >= 2:
                 self.is_active = False
-            
+
             return self.balance, self.OVERDRAFT_FEE
         else:
             self.balance = projected_balance
@@ -66,12 +70,9 @@ class CheckingAccount(Account):
             raise ValueError("Payment must be positive.")
         self.balance += amount
         return self.balance
-
 class SavingsAccount(Account):
     def __init__(self, balance=0):
         super().__init__("savings", balance)
-
-# Customer Class
 class Customer:
     def __init__(self, account_id, first_name, last_name, password,
                  checking_balance=0, savings_balance=0, overdraft_count=0, is_active=True):
@@ -90,7 +91,6 @@ class Customer:
     def overdraft_count(self):
         return self.checking.overdraft_count
 
-# Transaction Logger
 class TransactionLogger:
     FILE = "transactions.csv"
     FIELDNAMES = ["tx_id", "timestamp", "type", "from_account_id", "from_account_type",
@@ -135,7 +135,6 @@ class TransactionLogger:
             writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
             writer.writerow(tx)
 
-# Bank Class
 class Bank:
     def __init__(self, file_path="bank.csv", tx_logger=None):
         self.file_path = file_path
