@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 from datetime import datetime
 
 class Account:
@@ -28,12 +29,11 @@ class Account:
 
 class CheckingAccount(Account):
     OVERDRAFT_FEE = 35
-    OVERDRAFT_LIMIT = -100
 
-    def __init__(self, balance=0, overdraft_count=0, is_active=True):
+    def __init__(self, balance=0, overdraft_count=0, is_active=True, overdraft_limit=-100, currency="SAR"):
         super().__init__("checking", balance)
-        self.overdraft_count = int(overdraft_count)
         self.is_active = bool(is_active) if isinstance(is_active, bool) else str(is_active).lower() == "true"
+        self.overdraft_limit = overdraft_limit
     
     def withdraw(self, amount):
         if not self.is_active:
@@ -43,12 +43,14 @@ class CheckingAccount(Account):
             raise ValueError("Withdrawal must be positive.")
 
         projected_balance = self.balance - amount
-        
+        fee = 0
+
 
         if projected_balance < 0:
 
             self.balance = projected_balance - self.OVERDRAFT_FEE
             self.overdraft_count += 1
+            fee = self.OVERDRAFT_FEE
 
             if self.balance < self.OVERDRAFT_LIMIT:
                 raise ValueError("Withdrawal would exceed overdraft limit.")
@@ -59,7 +61,7 @@ class CheckingAccount(Account):
             return self.balance, self.OVERDRAFT_FEE
         else:
             self.balance = projected_balance
-            return self.balance, 0
+        return self.balance, fee
 
     def reactivate(self):
         self.is_active = True
@@ -75,12 +77,12 @@ class SavingsAccount(Account):
         super().__init__("savings", balance)
 class Customer:
     def __init__(self, account_id, first_name, last_name, password,
-                 checking_balance=0, savings_balance=0, overdraft_count=0, is_active=True):
+                 checking_balance=0, savings_balance=0, overdraft_count=0, is_active=True, overdraft_limit=-100):
         self.account_id = account_id
         self.first_name = first_name
         self.last_name = last_name
         self.password = password
-        self.checking = CheckingAccount(checking_balance, overdraft_count, is_active)
+        self.checking = CheckingAccount(checking_balance, overdraft_count, is_active, overdraft_limit)
         self.savings = SavingsAccount(savings_balance)
 
     @property
@@ -135,6 +137,16 @@ class TransactionLogger:
             writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
             writer.writerow(tx)
 
+    def get_transactions_for_customer(self, account_id):
+        tx_list = []
+        if not os.path.exists(self.file_path):
+            return tx_list
+        with open(self.file_path, mode="r", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row["from_account_id"] == account_id or row["to_account_id"] == account_id:
+                    tx_list.append(row)
+        return tx_list
 class Bank:
     def __init__(self, file_path="bank.csv", tx_logger=None):
         self.file_path = file_path
@@ -149,6 +161,7 @@ class Bank:
                 for row in reader:
                     account_id = row["account_id"]
                     is_active_val = row.get("is_active", "True").lower() == "true"
+                    overdraft_limit = float(row.get("overdraft_limit", -100))
                     cust = Customer(
                         account_id,
                         row.get("first_name") or "",
@@ -158,6 +171,7 @@ class Bank:
                         float(row.get("balance_savings", 0)),
                         int(row.get("overdraft_count", 0)),
                         is_active_val,
+                        overdraft_limit
                     )
                     self.customers[account_id] = cust
         except FileNotFoundError:
@@ -167,7 +181,7 @@ class Bank:
 
     def save_customers(self):
         fieldnames = ["account_id", "first_name", "last_name", "password",
-                      "balance_checking", "balance_savings", "overdraft_count", "is_active"]
+                      "balance_checking", "balance_savings", "overdraft_count", "is_active", "overdraft_limit"]
         with open(self.file_path, mode="w", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
@@ -181,7 +195,20 @@ class Bank:
                     "balance_savings": cust.savings.balance,
                     "overdraft_count": cust.overdraft_count,
                     "is_active": str(cust.is_active),
+                    "overdraft_limit": cust.checking.overdraft_limit
                 })
+
+    @staticmethod
+    def is_strong_password(password):
+        if len(password) < 8:
+            return False
+        if not re.search(r"[A-Za-z]", password):
+            return False
+        if not re.search(r"[0-9]", password):
+            return False
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            return False
+        return True
 
     def add_new_customer(self, first_name, last_name, password, initial_checking=0, initial_savings=0):
         if self.customers:
