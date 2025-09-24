@@ -1,6 +1,7 @@
 import csv
 import os
 import re
+import random
 from datetime import datetime
 
 class Account:
@@ -34,6 +35,7 @@ class CheckingAccount(Account):
         super().__init__("checking", balance)
         self.is_active = bool(is_active) if isinstance(is_active, bool) else str(is_active).lower() == "true"
         self.overdraft_limit = overdraft_limit
+        self.overdraft_count = int(overdraft_count) # FIX: Added this line
     
     def withdraw(self, amount):
         if not self.is_active:
@@ -45,23 +47,22 @@ class CheckingAccount(Account):
         projected_balance = self.balance - amount
         fee = 0
 
-
         if projected_balance < 0:
-
+            # FIX: Check limit on the final balance after withdrawal and fee
+            if (projected_balance - self.OVERDRAFT_FEE) < self.overdraft_limit:
+                 raise ValueError("Withdrawal would exceed overdraft limit.")
+            
             self.balance = projected_balance - self.OVERDRAFT_FEE
-            self.overdraft_count += 1
             fee = self.OVERDRAFT_FEE
-
-            if self.balance < self.OVERDRAFT_LIMIT:
-                raise ValueError("Withdrawal would exceed overdraft limit.")
-
+            self.overdraft_count += 1
+            
             if self.overdraft_count >= 2:
                 self.is_active = False
 
-            return self.balance, self.OVERDRAFT_FEE
+            return self.balance, fee # FIX: Return fee here, not self.OVERDRAFT_FEE
         else:
             self.balance = projected_balance
-        return self.balance, fee
+            return self.balance, fee
 
     def reactivate(self):
         self.is_active = True
@@ -323,3 +324,14 @@ class Bank:
             f.write("Transactions:\n")
             for tx in tx_list:
                 f.write(f"{tx['timestamp']} | {tx['type']} | Amount: {tx['amount']} | Fee: {tx['fee']} | Balance: {tx['resulting_balance']}\n")
+
+    def top_3_customers(self):
+        sorted_customers = sorted(
+            self.customers.values(),
+            key=lambda c: c.checking.balance + c.savings.balance,
+            reverse=True
+        )
+        top3 = sorted_customers[:3]
+        winner = random.choice(top3)
+        winner.checking.deposit(100)
+        return top3, winner
