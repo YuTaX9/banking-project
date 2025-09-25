@@ -1,7 +1,6 @@
 import csv
 import os
 import re
-import random
 from datetime import datetime
 
 class Account:
@@ -24,19 +23,15 @@ class Account:
         self.balance -= amount
         return self.balance
 
-    def convert_to(self, target_currency, rate):
-        self.balance *= rate
-        self.currency = target_currency
-
 class CheckingAccount(Account):
     OVERDRAFT_FEE = 35
 
-    def __init__(self, balance=0, overdraft_count=0, is_active=True, overdraft_limit=-100, currency="SAR"):
+    def __init__(self, balance = 0, overdraft_limit = -100):
         super().__init__("checking", balance)
-        self.is_active = bool(is_active) if isinstance(is_active, bool) else str(is_active).lower() == "true"
         self.overdraft_limit = overdraft_limit
-        self.overdraft_count = int(overdraft_count) # FIX: Added this line
-    
+        self.overdraft_count = 0
+        self.is_active = True
+
     def withdraw(self, amount):
         if not self.is_active:
             raise ValueError("Account is deactivated due to multiple overdrafts.")
@@ -48,80 +43,65 @@ class CheckingAccount(Account):
         fee = 0
 
         if projected_balance < 0:
-            # FIX: Check limit on the final balance after withdrawal and fee
             if (projected_balance - self.OVERDRAFT_FEE) < self.overdraft_limit:
-                 raise ValueError("Withdrawal would exceed overdraft limit.")
-            
+                raise ValueError("Withdrawal would exceed overdraft limit.")
+
             self.balance = projected_balance - self.OVERDRAFT_FEE
             fee = self.OVERDRAFT_FEE
             self.overdraft_count += 1
-            
+
             if self.overdraft_count >= 2:
                 self.is_active = False
-
-            return self.balance, fee # FIX: Return fee here, not self.OVERDRAFT_FEE
         else:
             self.balance = projected_balance
-            return self.balance, fee
 
-    def reactivate(self):
-        self.is_active = True
-        self.overdraft_count = 0
+        return self.balance, fee
 
-    def pay(self, amount):
-        if amount <= 0:
-            raise ValueError("Payment must be positive.")
-        self.balance += amount
-        return self.balance
 class SavingsAccount(Account):
     def __init__(self, balance=0):
         super().__init__("savings", balance)
+
+    def withdraw(self, amount):
+        new_balance = super().withdraw(amount)
+        return new_balance, 0
+
 class Customer:
     def __init__(self, account_id, first_name, last_name, password,
-                 checking_balance=0, savings_balance=0, overdraft_count=0, is_active=True, overdraft_limit=-100):
+                 balance_checking=0, balance_savings=0):
         self.account_id = account_id
         self.first_name = first_name
         self.last_name = last_name
         self.password = password
-        self.checking = CheckingAccount(checking_balance, overdraft_count, is_active, overdraft_limit)
-        self.savings = SavingsAccount(savings_balance)
+        self.checking = CheckingAccount(balance_checking)
+        self.savings = SavingsAccount(balance_savings)
 
-    @property
-    def is_active(self):
-        return self.checking.is_active
-
-    @property
-    def overdraft_count(self):
-        return self.checking.overdraft_count
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
 
 class TransactionLogger:
-    FILE = "transactions.csv"
     FIELDNAMES = ["tx_id", "timestamp", "type", "from_account_id", "from_account_type",
                   "to_account_id", "to_account_type", "amount", "fee", "resulting_balance"]
 
-    def __init__(self, file_path=None):
-        self.file_path = file_path or self.FILE
-        if not os.path.exists(self.file_path):
-            with open(self.file_path, mode="w", newline="") as f:
+    def __init__(self, filename="transactions.csv"):
+        self.filename = filename
+        if not os.path.exists(self.filename):
+            with open(self.filename, "w", newline="") as f:
                 writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
                 writer.writeheader()
 
     def _next_tx_id(self):
-        try:
-            with open(self.file_path, mode="r", newline="") as f:
+        max_id = 0
+        if os.path.exists(self.filename):
+            with open(self.filename, "r", newline="") as f:
                 reader = csv.DictReader(f)
-                max_id = 0
                 for row in reader:
                     try:
-                        tid = int(row.get("tx_id", 0))
-                        max_id = max(max_id, tid)
-                    except (ValueError, TypeError):
+                        max_id = max(max_id, int(row.get("tx_id", 0)))
+                    except:
                         continue
-                return max_id + 1
-        except FileNotFoundError:
-            return 1
+        return max_id + 1
 
-    def log(self, tx_type, from_id, from_type, to_id, to_type, amount, fee, resulting_balance):
+    def log(self, tx_type, from_id=None, from_type=None, to_id=None, to_type=None, amount=0, fee=0, resulting_balance=0):
         tx = {
             "tx_id": self._next_tx_id(),
             "timestamp": datetime.now().isoformat(),
@@ -134,57 +114,44 @@ class TransactionLogger:
             "fee": fee,
             "resulting_balance": resulting_balance,
         }
-        with open(self.file_path, mode="a", newline="") as f:
+        with open(self.filename, "a", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
             writer.writerow(tx)
 
     def get_transactions_for_customer(self, account_id):
         tx_list = []
-        if not os.path.exists(self.file_path):
+        if not os.path.exists(self.filename):
             return tx_list
-        with open(self.file_path, mode="r", newline="") as f:
+        with open(self.filename, "r") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row["from_account_id"] == account_id or row["to_account_id"] == account_id:
+                if row.get("from_account_id") == account_id or row.get("to_account_id") == account_id:
                     tx_list.append(row)
         return tx_list
+
 class Bank:
-    def __init__(self, file_path="bank.csv", tx_logger=None):
-        self.file_path = file_path
+    def __init__(self, filename="bank.csv"):
+        self.filename = filename
         self.customers = {}
-        self.tx_logger = tx_logger or TransactionLogger()
+        self.tx_logger = TransactionLogger()
         self.load_customers()
 
     def load_customers(self):
-        try:
-            with open(self.file_path, mode="r", newline="") as file:
-                reader = csv.DictReader(file)
-                for row in reader:
-                    account_id = row["account_id"]
-                    is_active_val = row.get("is_active", "True").lower() == "true"
-                    overdraft_limit = float(row.get("overdraft_limit", -100))
-                    cust = Customer(
-                        account_id,
-                        row.get("first_name") or "",
-                        row.get("last_name") or "",
-                        row.get("password") or "",
-                        float(row.get("balance_checking", 0)),
-                        float(row.get("balance_savings", 0)),
-                        int(row.get("overdraft_count", 0)),
-                        is_active_val,
-                        overdraft_limit
-                    )
-                    self.customers[account_id] = cust
-        except FileNotFoundError:
-            print(f"Warning: {self.file_path} not found. Starting with empty database.")
-        except Exception as e:
-            print(f"Error loading customers: {e}")
+        if not os.path.exists(self.filename):
+            return
+        with open(self.filename, "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                self.customers[row["account_id"]] = Customer(
+                    row["account_id"], row["first_name"], row["last_name"],
+                    row["password"], float(row["balance_checking"]), float(row["balance_savings"])
+                )
 
     def save_customers(self):
-        fieldnames = ["account_id", "first_name", "last_name", "password",
-                      "balance_checking", "balance_savings", "overdraft_count", "is_active", "overdraft_limit"]
-        with open(self.file_path, mode="w", newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
+        with open(self.filename, "w", newline="") as f:
+            fieldnames = ["account_id", "first_name", "last_name", "password",
+                          "balance_checking", "balance_savings"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             for cust in self.customers.values():
                 writer.writerow({
@@ -193,122 +160,151 @@ class Bank:
                     "last_name": cust.last_name,
                     "password": cust.password,
                     "balance_checking": cust.checking.balance,
-                    "balance_savings": cust.savings.balance,
-                    "overdraft_count": cust.overdraft_count,
-                    "is_active": str(cust.is_active),
-                    "overdraft_limit": cust.checking.overdraft_limit
+                    "balance_savings": cust.savings.balance
                 })
 
     @staticmethod
     def is_strong_password(password):
-        if len(password) < 8:
-            return False
-        if not re.search(r"[A-Za-z]", password):
-            return False
-        if not re.search(r"[0-9]", password):
-            return False
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-            return False
-        return True
+        return (
+            len(password) >= 8
+            and re.search(r"[A-Za-z]", password)
+            and re.search(r"[0-9]", password)
+            and re.search(r"[@$!%*?&]", password)
+        )
 
-    def add_new_customer(self, first_name, last_name, password, initial_checking=0, initial_savings=0, overdraft_limit=-100):
-        if not self.is_strong_password(password):
-            print("Warning: Weak password!")
-
+    def add_new_customer(self, first_name, last_name, password, initial_checking=0, initial_savings=0):
         if self.customers:
             max_id = max(int(k) for k in self.customers.keys())
             new_account_id = str(max_id + 1)
         else:
             new_account_id = "10001"
 
-        cust = Customer(new_account_id, first_name, last_name, password,
-                        initial_checking, initial_savings, overdraft_limit=overdraft_limit)
-        self.customers[new_account_id] = cust
+        if not self.is_strong_password(password):
+            raise ValueError("Password too weak! Must be at least 8 chars with letters, numbers, and symbols.")
+
+        self.customers[new_account_id] = Customer(
+            new_account_id, first_name, last_name, password,
+            initial_checking, initial_savings
+        )
         self.save_customers()
         return new_account_id
 
     def log_in(self, account_id, password):
-        return account_id in self.customers and self.customers[account_id].password == password
-
-    def deposit_mony(self, account_id, account_type, amount):
         customer = self.customers.get(account_id)
         if not customer:
-            raise ValueError("Customer not found")
+            return False
+        return customer.password == password
 
-        fee = 0
+    def deposit_money(self, account_id, account_type, amount):
+        customer = self.customers.get(account_id)
+        if not customer:
+            raise ValueError("Customer not found.")
+
         if account_type == "checking":
             new_balance = customer.checking.deposit(amount)
-            resulting_balance = new_balance
         elif account_type == "savings":
             new_balance = customer.savings.deposit(amount)
-            resulting_balance = new_balance
         else:
             raise ValueError("Invalid account type.")
 
-        self.tx_logger.log("deposit", None, None, account_id, account_type, amount, fee, resulting_balance)
+        self.tx_logger.log(
+            tx_type="deposit",
+            to_id=account_id,
+            to_type=account_type,
+            amount=amount,
+            resulting_balance=new_balance
+        )
         self.save_customers()
+        return new_balance
 
-    def withdraw_mony(self, account_id, account_type, amount):
+    def withdraw_money(self, account_id, account_type, amount):
         customer = self.customers.get(account_id)
         if not customer:
             raise ValueError("Customer not found.")
 
-        fee = 0
         if account_type == "checking":
             new_balance, fee = customer.checking.withdraw(amount)
-            resulting_balance = new_balance
         elif account_type == "savings":
-            new_balance = customer.savings.withdraw(amount)
-            resulting_balance = new_balance
+            new_balance, fee = customer.savings.withdraw(amount)
         else:
             raise ValueError("Invalid account type.")
 
-        self.tx_logger.log("withdraw", account_id, account_type, None, None, amount, fee, resulting_balance)
+        self.tx_logger.log(
+            tx_type="withdraw",
+            from_id=account_id,
+            from_type=account_type,
+            amount=amount,
+            fee=fee,
+            resulting_balance=new_balance
+        )
         self.save_customers()
+        return new_balance, fee
 
     def transfer_money(self, from_id, from_type, to_id, to_type, amount):
-        from_cust = self.customers.get(from_id)
-        to_cust = self.customers.get(to_id)
-        if not from_cust or not to_cust:
-            raise ValueError("One or both customers not found.")
+        sender = self.customers.get(from_id)
+        receiver = self.customers.get(to_id)
+        if not sender or not receiver:
+            raise ValueError("Sender or receiver not found.")
 
         if from_type == "checking":
-            new_balance_from, fee = from_cust.checking.withdraw(amount)
+            sender_new, fee = sender.checking.withdraw(amount)
         elif from_type == "savings":
-            new_balance_from = from_cust.savings.withdraw(amount)
-            fee = 0
+            sender_new, fee = sender.savings.withdraw(amount)
         else:
-            raise ValueError("Invalid source account type.")
+            raise ValueError("Invalid sender account type.")
 
         if to_type == "checking":
-            to_cust.checking.deposit(amount)
+            receiver_new = receiver.checking.deposit(amount)
         elif to_type == "savings":
-            to_cust.savings.deposit(amount)
+            receiver_new = receiver.savings.deposit(amount)
         else:
-            raise ValueError("Invalid destination account type.")
+            raise ValueError("Invalid receiver account type.")
 
-        self.tx_logger.log("transfer", from_id, from_type, to_id, to_type, amount, fee, new_balance_from)
+        self.tx_logger.log(
+            tx_type="transfer",
+            from_id=from_id,
+            from_type=from_type,
+            to_id=to_id,
+            to_type=to_type,
+            amount=amount,
+            fee=fee,
+            resulting_balance=sender_new
+        )
         self.save_customers()
+        return sender_new, receiver_new
 
-    def reactivate_account(self, account_id, payment_amount):
+    def reactivate_account(self, account_id, account_type):
         customer = self.customers.get(account_id)
         if not customer:
             raise ValueError("Customer not found.")
 
-        if payment_amount <= 0:
-            raise ValueError("Payment amount must be positive.")
+        if account_type != "checking":
+            raise ValueError("Only checking accounts can be reactivated.")
 
-        customer.checking.pay(payment_amount)
-        self.tx_logger.log("payment", None, None, account_id, "checking", payment_amount, 0, customer.checking.balance)
+        if customer.checking.is_active:
+            raise ValueError("Account already active.")
 
-        reactivated = False
-        if customer.checking.balance >= 0:
-            customer.checking.reactivate()
-            reactivated = True
-            self.tx_logger.log("reactivation", None, None, account_id, "checking", 0, 0, customer.checking.balance)
+        if customer.checking.balance < 0:
+            raise ValueError(f"Cannot reactivate account. Outstanding overdraft: {customer.checking.balance}")
+
+        customer.checking.is_active = True
+        customer.checking.overdraft_count = 0
+
+        self.tx_logger.log(
+        "reactivate",
+        account_id,
+        account_type,
+        None,
+        None,
+        0,
+        0,
+        customer.checking.balance
+        )
+
 
         self.save_customers()
-        return reactivated
+        return True
+
 
     def generate_statement(self, account_id):
         customer = self.customers.get(account_id)
@@ -320,18 +316,17 @@ class Bank:
             f.write(f"Customer: {customer.first_name} {customer.last_name}\n")
             f.write(f"Checking Balance: {customer.checking.balance}\n")
             f.write(f"Savings Balance: {customer.savings.balance}\n")
-            f.write(f"Overdrafts: {customer.overdraft_count}\n")
+            f.write(f"Overdrafts: {customer.checking.overdraft_count}\n")
             f.write("Transactions:\n")
             for tx in tx_list:
-                f.write(f"{tx['timestamp']} | {tx['type']} | Amount: {tx['amount']} | Fee: {tx['fee']} | Balance: {tx['resulting_balance']}\n")
+                f.write(
+                    f"{tx['timestamp']} | {tx['type']} | Amount: {tx['amount']} | Fee: {tx['fee']} | Balance: {tx['resulting_balance']}\n"
+                )
 
     def top_3_customers(self):
-        sorted_customers = sorted(
+        ranked = sorted(
             self.customers.values(),
             key=lambda c: c.checking.balance + c.savings.balance,
             reverse=True
         )
-        top3 = sorted_customers[:3]
-        winner = random.choice(top3)
-        winner.checking.deposit(100)
-        return top3, winner
+        return ranked[:3]
