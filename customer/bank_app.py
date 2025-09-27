@@ -13,7 +13,7 @@ class Account:
         if amount <= 0:
             raise ValueError("Deposit amount must be positive.")
         self.balance += amount
-        return self.balance
+        return self.balance # Return new balance
 
     def withdraw(self, amount):
         if amount <= 0:
@@ -24,7 +24,7 @@ class Account:
         return self.balance
 
 class CheckingAccount(Account):
-    OVERDRAFT_FEE = 35
+    OVERDRAFT_FEE = 35 # Fee if overdraft happens
 
     def __init__(self, balance = 0, overdraft_limit = -100):
         super().__init__("checking", balance)
@@ -42,7 +42,7 @@ class CheckingAccount(Account):
         projected_balance = self.balance - amount
         fee = 0
 
-        if projected_balance < 0:
+        if projected_balance < 0: # Overdraft
             if (projected_balance - self.OVERDRAFT_FEE) < self.overdraft_limit:
                 raise ValueError("Withdrawal would exceed overdraft limit.")
 
@@ -50,7 +50,7 @@ class CheckingAccount(Account):
             fee = self.OVERDRAFT_FEE
             self.overdraft_count += 1
 
-            if self.overdraft_count >= 2:
+            if self.overdraft_count >= 2: # 2 overdrafts → deactivate
                 self.is_active = False
         else:
             self.balance = projected_balance
@@ -89,7 +89,7 @@ class TransactionLogger:
                 writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
                 writer.writeheader()
 
-    def _next_tx_id(self):
+    def _next_tx_id(self): # Generate next transaction ID
         max_id = 0
         if os.path.exists(self.filename):
             with open(self.filename, "r", newline="") as f:

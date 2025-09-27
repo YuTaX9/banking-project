@@ -42,12 +42,15 @@ def main():
         if choice == "1":
             first = input("First name: ")
             last = input("Last name: ")
-            pwd = input("Password: ")
-            try:
-                new_id = bank.add_new_customer(first, last, pwd)
-                success(f"New customer added with ID: {new_id}")
-            except Exception as e:
-                error(str(e))
+            while True:
+                pwd = input(Fore.YELLOW + "Password: ")
+                try:
+                    new_id = bank.add_new_customer(first, last, pwd)
+                    success(f"New customer added with ID: {new_id}")
+                    break
+                except Exception as e:
+                    error(str(e))
+                    print(Fore.RED + "Please try again with a stronger password.\n")
 
         elif choice == "2":
             account_id = input("Account ID: ")
